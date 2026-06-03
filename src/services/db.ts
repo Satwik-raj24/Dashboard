@@ -307,8 +307,11 @@ export const db = {
     return logged || 'aspirant@gate2027.in';
   },
 
-  loginUser: (email: string): void => {
+  loginUser: (email: string, name?: string): void => {
     localStorage.setItem(LOCAL_STORAGE_KEYS.AUTH, email);
+    if (name) {
+      localStorage.setItem('gateos_registration_name', name);
+    }
   },
 
   logoutUser: (): void => {
@@ -342,10 +345,11 @@ export const db = {
         const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({ email, password: pwd });
         if (signInError) {
           // If sign in fails, try sign up
+          const regName = localStorage.getItem('gateos_registration_name');
           const { data: signUpData, error: signUpError } = await supabase.auth.signUp({ 
             email, 
             password: pwd,
-            options: { data: { display_name: email.split('@')[0] } } 
+            options: { data: { display_name: regName || email.split('@')[0] } } 
           });
           if (!signUpError && signUpData.user) {
             user = signUpData.user;
@@ -361,10 +365,11 @@ export const db = {
         
         // Seed profile if not found
         if (error || !data) {
+          const regName = localStorage.getItem('gateos_registration_name');
           const defaultProfile: Profile = {
             id: user.id,
             email: user.email!,
-            display_name: user.user_metadata?.display_name || 'Top Ranker',
+            display_name: regName || user.user_metadata?.display_name || email.split('@')[0] || 'Top Ranker',
             target_gate_score: 820,
             target_air: 45,
             daily_hours_goal: 4.5,
@@ -373,6 +378,7 @@ export const db = {
             streak_count: 5,
             last_active_date: '2026-06-02'
           };
+          if (regName) localStorage.removeItem('gateos_registration_name');
           const { data: createdProfile, error: createError } = await supabase.from('profiles').insert(defaultProfile).select().single();
           if (!createError && createdProfile) return createdProfile as Profile;
         }
@@ -381,10 +387,11 @@ export const db = {
     
     let profileStr = localStorage.getItem(LOCAL_STORAGE_KEYS.PROFILE);
     if (!profileStr) {
+      const regName = localStorage.getItem('gateos_registration_name');
       const defaultProfile: Profile = {
         id: 'user-id-local',
         email: db.getCurrentUserEmail(),
-        display_name: 'Top Ranker',
+        display_name: regName || 'Top Ranker',
         target_gate_score: 820,
         target_air: 45,
         daily_hours_goal: 4.5,
@@ -393,6 +400,7 @@ export const db = {
         streak_count: 5,
         last_active_date: '2026-06-02'
       };
+      if (regName) localStorage.removeItem('gateos_registration_name');
       localStorage.setItem(LOCAL_STORAGE_KEYS.PROFILE, JSON.stringify(defaultProfile));
       return defaultProfile;
     }

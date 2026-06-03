@@ -34,7 +34,7 @@ export default function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
         }
       } else if (mode === 'signup') {
         if (email && name && password.length >= 6) {
-          db.loginUser(email);
+          db.loginUser(email, name);
           onLoginSuccess(email);
         } else {
           setMessage({ text: 'Fill all inputs and use a 6+ character password.', type: 'error' });
