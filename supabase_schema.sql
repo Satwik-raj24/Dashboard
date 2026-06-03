@@ -159,3 +159,14 @@ $$ language plpgsql security definer;
 -- create trigger on_auth_user_created
 --   after insert on auth.users
 --   for each row execute procedure public.handle_new_user();
+
+-- 7. Security definer function to check if email exists in auth.users
+create or replace function public.check_email_exists(email_to_check text)
+returns boolean as $$
+begin
+  return exists (
+    select 1 from auth.users where email = email_to_check
+  );
+end;
+$$ language plpgsql security definer;
+

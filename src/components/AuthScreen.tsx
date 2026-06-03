@@ -1,7 +1,9 @@
+
+
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Shield, Mail, Lock, User, ArrowRight, Sparkles } from 'lucide-react';
-import { db } from '../services/db';
+import { Shield, Mail, Lock, User, ArrowRight } from 'lucide-react';
+import { db, isSupabaseConfigured, supabase } from '../services/db';
 
 interface AuthScreenProps {
   onLoginSuccess: (email: string) => void;
@@ -17,42 +19,83 @@ export default function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setMessage(null);
 
-    // Simulate Network Request
-    setTimeout(() => {
-      setLoading(false);
+    try {
       if (mode === 'login') {
         if (email && password.length >= 6) {
-          db.loginUser(email);
-          onLoginSuccess(email);
+          const res = await db.signInUser(email, password);
+          if (res.success) {
+            onLoginSuccess(email);
+          } else {
+            setMessage({ text: res.message, type: 'error' });
+          }
         } else {
           setMessage({ text: 'Please enter a valid email and 6+ character password.', type: 'error' });
         }
       } else if (mode === 'signup') {
         if (email && name && password.length >= 6) {
-          db.loginUser(email, name);
-          onLoginSuccess(email);
+          const res = await db.signUpUser(email, password, name);
+          if (res.success) {
+            onLoginSuccess(email);
+          } else {
+            setMessage({ text: res.message, type: 'error' });
+          }
         } else {
           setMessage({ text: 'Fill all inputs and use a 6+ character password.', type: 'error' });
         }
       } else {
-        setMessage({ text: 'Password reset link sent to your email.', type: 'success' });
+        if (email) {
+          if (isSupabaseConfigured() && supabase) {
+            const { error } = await supabase.auth.resetPasswordForEmail(email);
+            if (error) {
+              setMessage({ text: error.message, type: 'error' });
+            } else {
+              setMessage({ text: 'Password reset link sent to your email.', type: 'success' });
+            }
+          } else {
+            setMessage({ text: 'Password reset link sent to your email (offline mode).', type: 'success' });
+          }
+        } else {
+          setMessage({ text: 'Please enter your email address.', type: 'error' });
+        }
       }
-    }, 1200);
+    } catch (err: any) {
+      setMessage({ text: err.message || 'An unexpected authentication error occurred.', type: 'error' });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleGoogleLogin = () => {
+  const handleGoogleLogin = async () => {
     setLoading(true);
-    setTimeout(() => {
+    try {
+      if (isSupabaseConfigured() && supabase) {
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: {
+            redirectTo: window.location.origin
+          }
+        });
+        if (error) {
+          setMessage({ text: error.message, type: 'error' });
+          setLoading(false);
+        }
+      } else {
+        setTimeout(() => {
+          setLoading(false);
+          const mockEmail = 'gate_ranker_1@gmail.com';
+          db.loginUser(mockEmail);
+          onLoginSuccess(mockEmail);
+        }, 800);
+      }
+    } catch (err: any) {
+      setMessage({ text: err.message || 'An error occurred during Google sign in.', type: 'error' });
       setLoading(false);
-      const mockEmail = 'gate_ranker_1@gmail.com';
-      db.loginUser(mockEmail);
-      onLoginSuccess(mockEmail);
-    }, 800);
+    }
   };
 
   return (
