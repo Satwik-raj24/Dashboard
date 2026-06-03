@@ -313,15 +313,29 @@ export const db = {
 
   logoutUser: (): void => {
     localStorage.removeItem(LOCAL_STORAGE_KEYS.AUTH);
+    if (isSupabaseConfigured() && supabase) {
+      supabase.auth.signOut().catch(err => console.error("Supabase signOut error", err));
+    }
   },
 
   // 1. Profile methods
   getProfile: async (): Promise<Profile> => {
     if (isSupabaseConfigured() && supabase) {
-      // Ensure user is logged into Supabase auth
+      const targetEmail = db.getCurrentUserEmail();
       let { data: { user } } = await supabase.auth.getUser();
+      
+      // If a session is active but email does not match the target email, sign out to trigger sign in below
+      if (user && user.email !== targetEmail) {
+        try {
+          await supabase.auth.signOut();
+        } catch (err) {
+          console.error("Supabase signOut sync error", err);
+        }
+        user = null;
+      }
+      
       if (!user) {
-        const email = db.getCurrentUserEmail();
+        const email = targetEmail;
         const pwd = 'GateOS2027pwd!';
         
         // Try sign in
