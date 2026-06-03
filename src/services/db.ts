@@ -369,7 +369,7 @@ export const db = {
           const defaultProfile: Profile = {
             id: user.id,
             email: user.email!,
-            display_name: regName || user.user_metadata?.display_name || email.split('@')[0] || 'Top Ranker',
+            display_name: regName || user.user_metadata?.display_name || targetEmail.split('@')[0] || 'Top Ranker',
             target_gate_score: 820,
             target_air: 45,
             daily_hours_goal: 4.5,
