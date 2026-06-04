@@ -111,6 +111,29 @@ export interface Note {
   content: string;
 }
 
+export type SessionType = 'Learning' | 'PYQ Practice' | 'Revision' | 'Mock Analysis';
+
+export function getSessionType(notes: string | null | undefined): SessionType {
+  const noteStr = notes || '';
+  if (noteStr.startsWith('[Learning]')) return 'Learning';
+  if (noteStr.startsWith('[PYQ Practice]')) return 'PYQ Practice';
+  if (noteStr.startsWith('[Revision]')) return 'Revision';
+  if (noteStr.startsWith('[Mock Analysis]')) return 'Mock Analysis';
+  
+  // Fallback keyword parsing
+  const lower = noteStr.toLowerCase();
+  if (lower.includes('revision') || lower.includes('revised') || lower.includes('spaced') || lower.includes('recall') || lower.includes('review') || lower.includes('spacing')) {
+    return 'Revision';
+  }
+  if (lower.includes('pyq') || lower.includes('solved') || lower.includes('practice') || lower.includes('accuracy') || lower.includes('drill') || lower.includes('question') || lower.includes('test')) {
+    return 'PYQ Practice';
+  }
+  if (lower.includes('mock') || lower.includes('test') || lower.includes('analysis') || lower.includes('exam')) {
+    return 'Mock Analysis';
+  }
+  return 'Learning';
+}
+
 // ----------------------------------------------------
 // Supabase Setup
 // ----------------------------------------------------
@@ -260,8 +283,33 @@ const createInitialProgress = (email: string): TopicProgress[] => {
           studyHours = idx === 0 ? 12 : 4;
           solvedPyqs = idx === 0 ? totalPyqs : 5;
           correctPyqs = idx === 0 ? Math.floor(totalPyqs * 0.9) : 3;
-          wrongPyqs = solvedPyqs - correctPyqs;
           lastStudied = idx === 0 ? '2026-05-25' : '2026-06-02';
+        }
+        // General Aptitude (GA) Seeding
+        else if (subject.id === 'ga') {
+          if (idx === 0) { // Verbal Aptitude
+            status = 'Completed';
+            completion = 100;
+            clarity = 8;
+            confidence = 8;
+            studyHours = 6;
+            solvedPyqs = totalPyqs;
+            correctPyqs = Math.floor(totalPyqs * 0.85);
+            wrongPyqs = totalPyqs - correctPyqs;
+            revisionCount = 2;
+            lastStudied = '2026-05-25';
+          } else if (idx === 1) { // Quantitative Aptitude
+            status = 'In Progress';
+            completion = 50;
+            clarity = 6;
+            confidence = 5;
+            studyHours = 9;
+            solvedPyqs = Math.floor(totalPyqs * 0.5);
+            correctPyqs = Math.floor(solvedPyqs * 0.7);
+            wrongPyqs = solvedPyqs - correctPyqs;
+            revisionCount = 1;
+            lastStudied = '2026-06-01';
+          }
         }
       }
 
@@ -299,7 +347,9 @@ const createInitialSessions = (email: string): StudySession[] => {
     { id: '3', subject_id: 'dm', topic_name: 'Sets', duration_seconds: 10800, notes: 'Venn diagrams are clear. Covered countable vs uncountable.', created_at: '2026-05-28T09:15:00Z' },
     { id: '4', subject_id: 'dl', topic_name: 'Boolean Algebra', duration_seconds: 7200, notes: 'Quick revision of Boolean laws and SOP/POS forms.', created_at: '2026-05-30T16:00:00Z' },
     { id: '5', subject_id: 'os', topic_name: 'System Calls', duration_seconds: 18000, notes: 'Fork and exec tracing was hard, but solved most PYQs.', created_at: '2026-06-01T11:00:00Z' },
-    { id: '6', subject_id: 'algo', topic_name: 'Searching', duration_seconds: 7200, notes: 'Binary search variants covered.', created_at: '2026-06-02T18:45:00Z' }
+    { id: '6', subject_id: 'algo', topic_name: 'Searching', duration_seconds: 7200, notes: 'Binary search variants covered.', created_at: '2026-06-02T18:45:00Z' },
+    { id: '7', subject_id: 'ga', topic_name: 'Verbal Aptitude', duration_seconds: 10800, notes: '[Learning] Covered English tenses and noun-verb agreements. Practice questions done.', created_at: '2026-05-25T11:00:00Z' },
+    { id: '8', subject_id: 'ga', topic_name: 'Quantitative Aptitude', duration_seconds: 14400, notes: '[PYQ Practice] Solved percentage and ratio questions from GATE past papers.', created_at: '2026-06-01T15:00:00Z' }
   ];
 };
 
@@ -320,7 +370,8 @@ const createInitialRevisions = (email: string): RevisionTask[] => {
     { id: 'r1', subject_id: 'dm', topic_name: 'Propositional Logic', interval_days: 7, due_date: '2026-06-01', status: 'Completed', completed_at: '2026-06-01' },
     { id: 'r2', subject_id: 'os', topic_name: 'Processes', interval_days: 3, due_date: '2026-06-02', status: 'Missed', completed_at: null },
     { id: 'r3', subject_id: 'os', topic_name: 'Synchronization', interval_days: 1, due_date: '2026-06-03', status: 'Pending', completed_at: null },
-    { id: 'r4', subject_id: 'dl', topic_name: 'Boolean Algebra', interval_days: 3, due_date: '2026-06-04', status: 'Pending', completed_at: null }
+    { id: 'r4', subject_id: 'dl', topic_name: 'Boolean Algebra', interval_days: 3, due_date: '2026-06-04', status: 'Pending', completed_at: null },
+    { id: 'r5', subject_id: 'ga', topic_name: 'Verbal Aptitude', interval_days: 7, due_date: '2026-06-01', status: 'Completed', completed_at: '2026-06-01' }
   ];
 };
 
@@ -1334,7 +1385,7 @@ export const db = {
     }
   },
 
-  signUpUser: async (email: string, password: string, name: string): Promise<{ success: boolean; message: string }> => {
+  signUpUser: async (email: string, password: string, name: string): Promise<{ success: boolean; message: string; emailConfirmationRequired?: boolean }> => {
     if (isSupabaseConfigured() && supabase) {
       try {
         const { data, error } = await supabase.auth.signUp({
@@ -1342,6 +1393,7 @@ export const db = {
           password,
           options: {
             data: {
+              name: name,
               display_name: name
             }
           }
@@ -1356,6 +1408,15 @@ export const db = {
         
         if (data.user && (!data.user.identities || data.user.identities.length === 0)) {
           return { success: false, message: 'An account with this email already exists. Please sign in instead.' };
+        }
+        
+        if (data.user && !data.session) {
+          // Email confirmation is required by Supabase config
+          return { 
+            success: true, 
+            emailConfirmationRequired: true, 
+            message: 'Account created! A verification email has been sent. Please confirm your email address in your inbox before signing in.' 
+          };
         }
         
         db.loginUser(email, name);
@@ -1379,7 +1440,8 @@ export const db = {
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         
         if (error) {
-          if (error.message.toLowerCase().includes('invalid login credentials')) {
+          const errMsg = error.message.toLowerCase();
+          if (errMsg.includes('invalid login credentials')) {
             try {
               const { data: exists, error: rpcError } = await supabase.rpc('check_email_exists', { email_to_check: email });
               if (!rpcError && exists === false) {
@@ -1390,10 +1452,13 @@ export const db = {
             }
             return { success: false, message: 'Invalid email or password. (Note: if you are a new user, please sign up first).' };
           }
+          if (errMsg.includes('email not confirmed') || errMsg.includes('email not verified')) {
+            return { success: false, message: 'Email address not verified yet. Please check your inbox and confirm your email before signing in.' };
+          }
           return { success: false, message: error.message };
         }
         
-        db.loginUser(email, data.user?.user_metadata?.display_name || email.split('@')[0]);
+        db.loginUser(email, data.user?.user_metadata?.display_name || data.user?.user_metadata?.name || email.split('@')[0]);
         return { success: true, message: 'Login successful.' };
       } catch (err: any) {
         console.error("signInUser exception", err);

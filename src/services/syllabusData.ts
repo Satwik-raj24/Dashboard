@@ -767,5 +767,44 @@ export const syllabus: Subject[] = [
         subtopics: ["User Agents", "Mail Servers", "SMTP transmission flow"]
       }
     ]
+  },
+  {
+    id: "ga",
+    name: "General Aptitude",
+    code: "GA",
+    weightage: 15,
+    color: "from-fuchsia-500 to-pink-600",
+    topics: [
+      {
+        name: "Verbal Aptitude",
+        subtopics: [
+          "Tenses", "Articles", "Adjectives", "Prepositions", "Conjunctions", 
+          "Verb-Noun Agreement", "Parts of Speech", "Vocabulary", "Idioms", 
+          "Phrases", "Reading Comprehension", "Narrative Sequencing"
+        ]
+      },
+      {
+        name: "Quantitative Aptitude",
+        subtopics: [
+          "Ratios", "Percentages", "Powers", "Exponents", "Logarithms", 
+          "Permutations", "Combinations", "Series", "Data Interpretation", 
+          "Bar Graphs", "Pie Charts", "Tables", "Maps", "Statistics", 
+          "Probability", "Geometry", "Mensuration"
+        ]
+      },
+      {
+        name: "Analytical Aptitude",
+        subtopics: [
+          "Deduction", "Induction", "Analogy", "Numerical Relations", "Logical Reasoning"
+        ]
+      },
+      {
+        name: "Spatial Aptitude",
+        subtopics: [
+          "Translation", "Rotation", "Scaling", "Mirroring", "Shape Assembly", 
+          "Shape Grouping", "Paper Folding", "Paper Cutting", "2D Patterns", "3D Patterns"
+        ]
+      }
+    ]
   }
 ];

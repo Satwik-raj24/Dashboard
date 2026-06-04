@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Play, Pause, Square, RotateCcw, AlertCircle, Clock, PlusCircle } from 'lucide-react';
 import { Subject } from '../services/syllabusData';
-import { db, StudySession, getLocalDateString } from '../services/db';
+import { db, StudySession, getLocalDateString, SessionType, getSessionType } from '../services/db';
 
 interface StudyTimerTabProps {
   subjects: Subject[];
@@ -21,6 +21,7 @@ export default function StudyTimerTab({
   onSessionLogged,
   sessions
 }: StudyTimerTabProps) {
+  const [sessionType, setSessionType] = useState<SessionType>('Learning');
   const [mode, setMode] = useState<TimerMode>('timer');
   const [selectedSubjectId, setSelectedSubjectId] = useState(initialSubjectId);
   const [selectedTopicName, setSelectedTopicName] = useState(initialTopicName);
@@ -81,11 +82,12 @@ export default function StudyTimerTab({
     // Only log if duration is at least 3 seconds
     if (seconds >= 3) {
       try {
+        const typePrefixedNotes = `[${sessionType}] ${notes.trim() || 'Studied concepts.'}`;
         await db.addStudySession({
           subject_id: selectedSubjectId,
           topic_name: selectedTopicName,
           duration_seconds: seconds,
-          notes: notes.trim() || 'Studied concepts.'
+          notes: typePrefixedNotes
         });
         
         setSavedMessage(`Logged session: ${formatTime(seconds)} spent on ${selectedTopicName}`);
@@ -127,11 +129,12 @@ export default function StudyTimerTab({
 
     setLoggingManual(true);
     try {
+      const typePrefixedNotes = `[${sessionType}] ${notes.trim() || 'Logged from external tracker.'}`;
       await db.addStudySession({
         subject_id: selectedSubjectId,
         topic_name: selectedTopicName,
         duration_seconds: totalSecs,
-        notes: notes.trim() || 'Logged from Yeolpumta / External tracker.'
+        notes: typePrefixedNotes
       });
 
       setSavedMessage(`Manually logged: ${hrs}h ${mins}m spent on ${selectedTopicName}`);
@@ -317,6 +320,20 @@ export default function StudyTimerTab({
             )}
 
             <div>
+              <label className="micro-tag block mb-2">ACTIVITY TYPE</label>
+              <select
+                value={sessionType}
+                onChange={(e) => setSessionType(e.target.value as SessionType)}
+                className="w-full p-3 rounded-xl glass-input text-xs"
+              >
+                <option value="Learning" className="bg-[#111315]">📘 Learning (New Concepts)</option>
+                <option value="PYQ Practice" className="bg-[#111315]">📝 PYQ Practice (PYQ Drilling)</option>
+                <option value="Revision" className="bg-[#111315]">🔄 Revision (Spaced Recall)</option>
+                <option value="Mock Analysis" className="bg-[#111315]">📊 Mock Analysis (Test Review)</option>
+              </select>
+            </div>
+
+            <div>
               <label className="micro-tag block mb-2">SESSION NOTES</label>
               <textarea
                 placeholder={mode === 'manual' ? "Copy notes from Yeolpumta or summarize concepts studied..." : "What concepts are you working on? (Formula sheet, theorem review, PYQ set...)"}
@@ -427,11 +444,15 @@ export default function StudyTimerTab({
                   const secs = s.duration_seconds % 60;
                   const timeDisplay = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
 
+                  const sType = getSessionType(s.notes);
+
                   return (
                     <div key={s.id || idx} className="p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.04] space-y-1.5">
                       <div className="flex justify-between items-start">
                         <div>
-                          <span className="text-[9px] font-extrabold text-[#6D5DF6] uppercase block tracking-wider">{code}</span>
+                          <span className="text-[9px] font-extrabold text-[#6D5DF6] uppercase block tracking-wider">
+                            {code} • <span className="text-secondary">{sType}</span>
+                          </span>
                           <span className="text-xs text-white font-bold block mt-0.5">{s.topic_name}</span>
                         </div>
                         <span className="text-[9px] font-extrabold text-[#8B7CFF] bg-[#8B7CFF]/10 border border-[#8B7CFF]/20 px-2 py-0.5 rounded-full">
@@ -440,7 +461,7 @@ export default function StudyTimerTab({
                       </div>
                       {s.notes && (
                         <p className="text-[#7D8590] text-[10px] italic leading-normal border-t border-white/[0.03] pt-1.5 mt-1">
-                          "{s.notes}"
+                          "{s.notes.replace(/^\[(Learning|PYQ Practice|Revision|Mock Analysis)\] /, '')}"
                         </p>
                       )}
                     </div>

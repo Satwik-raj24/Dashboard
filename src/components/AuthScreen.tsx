@@ -40,7 +40,13 @@ export default function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
         if (email && name && password.length >= 6) {
           const res = await db.signUpUser(email, password, name);
           if (res.success) {
-            onLoginSuccess(email);
+            if (res.emailConfirmationRequired) {
+              setMessage({ text: res.message, type: 'success' });
+              setMode('login');
+              setPassword('');
+            } else {
+              onLoginSuccess(email);
+            }
           } else {
             setMessage({ text: res.message, type: 'error' });
           }

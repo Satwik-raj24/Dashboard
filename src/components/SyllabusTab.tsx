@@ -5,23 +5,39 @@ import {
   HelpCircle, Star, Edit, Save, PlusCircle, Check, Play, BookOpen 
 } from 'lucide-react';
 import { Subject, Topic } from '../services/syllabusData';
-import { TopicProgress, db } from '../services/db';
+import { TopicProgress, db, RevisionTask } from '../services/db';
+import { calculateTopicPriority } from '../services/priorityEngine';
 
 interface SyllabusTabProps {
   subjects: Subject[];
   progress: TopicProgress[];
   onProgressUpdated: () => void;
   onNavigateToTab: (tab: string, subjectId?: string, topicName?: string) => void;
+  revisions: RevisionTask[];
+  initialSubjectId?: string | null;
+  initialTopicName?: string | null;
 }
 
 export default function SyllabusTab({
   subjects,
   progress,
   onProgressUpdated,
-  onNavigateToTab
+  onNavigateToTab,
+  revisions,
+  initialSubjectId = null,
+  initialTopicName = null
 }: SyllabusTabProps) {
-  const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null);
-  const [selectedTopicName, setSelectedTopicName] = useState<string | null>(null);
+  const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(initialSubjectId);
+  const [selectedTopicName, setSelectedTopicName] = useState<string | null>(initialTopicName);
+
+  React.useEffect(() => {
+    if (initialSubjectId !== null) {
+      setSelectedSubjectId(initialSubjectId);
+    }
+    if (initialTopicName !== null) {
+      setSelectedTopicName(initialTopicName);
+    }
+  }, [initialSubjectId, initialTopicName]);
   
   // Edit topic state
   const [completion, setCompletion] = useState(0);
@@ -308,6 +324,27 @@ export default function SyllabusTab({
                       const topicStatus = topicProg?.status || 'Not Started';
                       const topicComp = topicProg?.completion_percentage || 0;
                       
+                      const tempProg = topicProg || {
+                        subject_id: subj.id,
+                        topic_name: topic.name,
+                        status: 'Not Started',
+                        completion_percentage: 0,
+                        start_date: null,
+                        last_studied_date: null,
+                        concept_clarity: 1,
+                        confidence_score: 1,
+                        difficulty_rating: 3,
+                        study_hours: 0,
+                        pyqs_solved: 0,
+                        pyqs_total: 25,
+                        pyqs_correct: 0,
+                        pyqs_wrong: 0,
+                        pyqs_avg_time_seconds: 0,
+                        revision_count: 0,
+                        revision_due_date: null
+                      };
+                      const priorityInfo = calculateTopicPriority(tempProg, subj.weightage, revisions || []);
+                      
                       return (
                         <div 
                           key={index}
@@ -319,13 +356,21 @@ export default function SyllabusTab({
                           }`}
                         >
                           <div className="space-y-1">
-                            <h4 className="text-sm font-bold text-white m-0 flex items-center gap-2">
+                            <h4 className="text-sm font-bold text-white m-0 flex items-center gap-2 flex-wrap">
                               {topicComp === 100 ? (
                                 <CheckCircle2 className="h-4.5 w-4.5 text-emerald-400 shrink-0" />
                               ) : (
                                 <BookOpen className="h-4.5 w-4.5 text-[#6D5DF6] shrink-0" />
                               )}
-                              {topic.name}
+                              <span>{topic.name}</span>
+                              <span className={`px-1.5 py-0.5 rounded text-[8px] font-black border uppercase tracking-wider shrink-0 ${
+                                priorityInfo.priority === 'Critical' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
+                                priorityInfo.priority === 'High' ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' :
+                                priorityInfo.priority === 'Medium' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
+                                'bg-slate-500/10 text-slate-400 border-slate-500/20'
+                              }`}>
+                                {priorityInfo.priority}
+                              </span>
                             </h4>
                             <span className="text-[10px] text-secondary block pl-6">
                               {topic.subtopics.length} subtopics • {topicProg?.study_hours?.toFixed(1) || 0} hrs studied

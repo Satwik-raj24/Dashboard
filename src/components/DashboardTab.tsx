@@ -12,6 +12,8 @@ import {
 import { Subject } from '../services/syllabusData';
 import { Profile, TopicProgress, MockTest, RevisionTask, StudySession, getLocalDateString } from '../services/db';
 import { calculateReadiness } from '../services/readinessEngine';
+import { predictAIR } from '../services/predictionEngine';
+import { calculateTopicPriority } from '../services/priorityEngine';
 
 interface DashboardTabProps {
   profile: Profile;
@@ -38,6 +40,91 @@ export default function DashboardTab({
 
   // 1. Calculations via AI Engines
   const readiness = calculateReadiness(profile, progress, sessions, mocks, revisions);
+
+  const prediction = predictAIR(progress, mocks, revisions);
+  const targetAir = profile.target_air;
+  const predictedAir = prediction.expectedRank;
+  const gapToTarget = predictedAir - targetAir;
+  
+  // Remaining Topics: topics where completion < 100
+  const remainingTopics = progress.filter(p => p.completion_percentage < 100).length;
+
+  // Remaining PYQs: sum of target pyqs - solved pyqs for topics
+  const remainingPyqs = progress.reduce((sum, p) => sum + Math.max(0, p.pyqs_total - p.pyqs_solved), 0);
+
+  // Remaining Revision Tasks: Pending or Missed revisions
+  const remainingRevisions = revisions.filter(r => r.status === 'Pending' || r.status === 'Missed').length;
+
+  // Weakness Intelligence Center Focus Areas
+  const focusAreas = (() => {
+    const list: Array<{ topicName: string; reason: string; rec: string; priority: 'Critical' | 'High'; score: number }> = [];
+    
+    progress.forEach(p => {
+      const subj = subjects.find(s => s.id === p.subject_id);
+      if (!subj) return;
+
+      const completion = p.completion_percentage || 0;
+      const clarity = p.concept_clarity || 1;
+      const solved = p.pyqs_solved || 0;
+      const correct = p.pyqs_correct || 0;
+      const accuracy = solved > 0 ? (correct / solved) * 100 : 0;
+
+      const priorityInfo = calculateTopicPriority(p, subj.weightage, revisions);
+
+      if (clarity < 5 && completion > 0) {
+        list.push({
+          topicName: p.topic_name,
+          reason: `Concept Clarity is low (${clarity}/10).`,
+          rec: `${p.topic_name} clarity is currently ${clarity}/10. Recommended study time: ${Math.max(2, Math.round(subj.weightage * (1 - completion/100) * 2))} hours this week to resolve weak concepts.`,
+          priority: priorityInfo.priority === 'Critical' ? 'Critical' : 'High',
+          score: priorityInfo.score
+        });
+      } else if (accuracy < 60 && solved > 0) {
+        list.push({
+          topicName: p.topic_name,
+          reason: `PYQ Accuracy is sub-par (${Math.round(accuracy)}%).`,
+          rec: `${p.topic_name} has ${completion}% completion and ${Math.round(accuracy)}% accuracy. Recommended study time: ${Math.max(2, Math.round(subj.weightage * (1 - completion/100) * 3))} hours on problem drilling.`,
+          priority: priorityInfo.priority === 'Critical' ? 'Critical' : 'High',
+          score: priorityInfo.score
+        });
+      } else if (subj.weightage >= 8 && completion < 40) {
+        list.push({
+          topicName: p.topic_name,
+          reason: `High weightage subject, completion is low (${completion}%).`,
+          rec: `${subj.name} has high weightage (${subj.weightage} Marks). ${p.topic_name} is only ${completion}% complete. Allocate ${Math.max(3, Math.round(subj.weightage * 0.5))} hours this week.`,
+          priority: priorityInfo.priority === 'Critical' ? 'Critical' : 'High',
+          score: priorityInfo.score
+        });
+      }
+    });
+
+    return list.sort((a, b) => b.score - a.score).slice(0, 3);
+  })();
+
+  // Subject Weightage Data
+  const subjectWeightageData = subjects.map(s => {
+    const subProgress = progress.filter(p => p.subject_id === s.id);
+    const completedCount = subProgress.filter(p => p.status === 'Completed' || p.status === 'Mastered').length;
+    const totalCount = s.topics.length || 1;
+    const completionPercent = Math.round((completedCount / totalCount) * 100);
+    
+    const studied = subProgress.filter(p => p.status !== 'Not Started');
+    const clarityAvg = studied.length > 0
+      ? (studied.reduce((sum, p) => sum + p.concept_clarity, 0) / studied.length)
+      : 1;
+
+    const preparedMarks = Math.round((completionPercent / 100) * s.weightage * (clarityAvg / 10) * 10) / 10;
+    const marksLeft = Math.round((s.weightage - preparedMarks) * 10) / 10;
+
+    return {
+      code: s.code,
+      name: s.name,
+      potential: s.weightage,
+      prepared: preparedMarks,
+      left: Math.max(0, marksLeft),
+      completion: completionPercent
+    };
+  }).sort((a, b) => b.potential - a.potential);
 
   // 2. Study Session calculations
   const totalStudySeconds = sessions.reduce((sum, s) => sum + s.duration_seconds, 0);
@@ -399,6 +486,68 @@ export default function DashboardTab({
         </button>
       </div>
 
+      {/* GATE Mission Control Dashboard */}
+      <div className="glass-panel p-6 rounded-2xl border border-white/[0.08] relative overflow-hidden bg-gradient-to-br from-[#0d0f17] to-[#0A0A0B] shadow-2xl">
+        <div className="absolute top-0 right-0 w-80 h-80 bg-[#8B7CFF]/5 rounded-full blur-[100px] pointer-events-none" />
+        
+        <div className="flex items-center justify-between border-b border-white/[0.06] pb-4 mb-6">
+          <div className="flex items-center gap-2">
+            <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+            <h3 className="text-xs font-black text-white tracking-widest uppercase m-0 font-mono">GATE MISSION CONTROL CENTER</h3>
+          </div>
+          <span className="text-[9px] font-mono text-[#8B7CFF] bg-[#8B7CFF]/10 px-2 py-0.5 rounded border border-[#8B7CFF]/20 font-bold uppercase tracking-wider">
+            STATUS: ACTIVE MONITORING
+          </span>
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+          {/* Target AIR vs Predicted AIR */}
+          <div className="space-y-1.5">
+            <span className="text-[9px] text-[#7D8590] font-bold uppercase tracking-wider block">Rank Projection</span>
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl font-black text-white">#{predictedAir}</span>
+              <span className="text-[10px] text-[#7D8590] font-semibold">vs #{targetAir} Target</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              {gapToTarget <= 0 ? (
+                <span className="text-[8px] text-emerald-400 font-extrabold bg-emerald-500/10 px-1.5 py-0.5 rounded uppercase">ON TARGET</span>
+              ) : (
+                <span className="text-[8px] text-rose-400 font-extrabold bg-rose-500/10 px-1.5 py-0.5 rounded uppercase">+{gapToTarget} RANKS GAP</span>
+              )}
+            </div>
+          </div>
+
+          {/* Syllabus Complete Date */}
+          <div className="space-y-1.5">
+            <span className="text-[9px] text-[#7D8590] font-bold uppercase tracking-wider block">Est. Completion</span>
+            <div className="text-xl font-black text-white">{predictedCompletionDate}</div>
+            <span className="text-[9px] text-secondary block">Based on {Math.round(dailyVelocityHours * 10) / 10}h daily study velocity</span>
+          </div>
+
+          {/* Remaining Load */}
+          <div className="space-y-1.5">
+            <span className="text-[9px] text-[#7D8590] font-bold uppercase tracking-wider block">Remaining Items</span>
+            <div className="text-xs font-bold text-white flex flex-wrap gap-2">
+              <span>📚 <b>{remainingTopics}</b> topics</span>
+              <span>📝 <b>{remainingPyqs}</b> PYQs</span>
+            </div>
+            <span className="text-[9px] text-secondary block">🎯 {remainingRevisions} pending revisions</span>
+          </div>
+
+          {/* Hours Required */}
+          <div className="space-y-1.5">
+            <span className="text-[9px] text-[#7D8590] font-bold uppercase tracking-wider block">Est. Study Load Left</span>
+            <div className="text-xl font-black text-white">{Math.round(remainingHoursNeeded)} Hours</div>
+            <div className="w-full bg-white/5 h-1 rounded-full overflow-hidden mt-1.5">
+              <div 
+                className="bg-gradient-to-r from-[#6D5DF6] to-[#8B7CFF] h-full rounded-full" 
+                style={{ width: `${syllabusCompletion}%` }}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* 2. Primary Metrics Row */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Readiness Dial Card */}
@@ -587,6 +736,98 @@ export default function DashboardTab({
             <span>Today's Time: <b>{todayStudyHours}h</b></span>
           </div>
         </div>
+      </div>
+
+      {/* 3.1 Subject Marks Analytics & Weakness Intelligence Center */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        {/* Left: Subject Weightage Analytics (span 2) */}
+        <div className="glass-card p-5 md:p-8 rounded-2xl lg:col-span-2 space-y-6 flex flex-col justify-between">
+          <div>
+            <h3 className="text-md font-bold text-white flex items-center gap-2 m-0">
+              <Award className="h-5 w-5 text-fuchsia-400" />
+              Potential vs Prepared Marks
+            </h3>
+            <p className="text-secondary text-[10px] mt-1 leading-normal">
+              Estimated prepared marks calculated from syllabus completion % and concept clarity ratings.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+            {/* Scrollable list */}
+            <div className="space-y-2.5 max-h-56 overflow-y-auto pr-1">
+              {subjectWeightageData.map((sub, idx) => (
+                <div key={idx} className="p-2.5 rounded-xl bg-white/[0.01] border border-white/[0.04] text-[10px] flex justify-between items-center">
+                  <div>
+                    <span className="font-extrabold text-white text-xs block">{sub.name} ({sub.code})</span>
+                    <span className="text-secondary mt-0.5 block">Weightage: <b>{sub.potential} M</b> • Prepared: <b className="text-[#8B7CFF]">{sub.prepared} M</b></span>
+                  </div>
+                  <div className="text-right">
+                    <span className="font-black text-rose-400 block text-xs">-{sub.left} M</span>
+                    <span className="text-secondary mt-0.5 block">Left to Capture</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Recharts Bar Chart */}
+            <div className="h-56 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={subjectWeightageData} margin={{ left: -25, right: 5, top: 5, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" />
+                  <XAxis dataKey="code" tick={{ fill: '#7D8590', fontSize: 8 }} />
+                  <YAxis tick={{ fill: '#7D8590', fontSize: 8 }} />
+                  <Tooltip contentStyle={{ backgroundColor: '#111315', borderColor: 'rgba(255,255,255,0.1)', color: '#fff', fontSize: '9px' }} />
+                  <Bar dataKey="prepared" name="Prepared Marks" stackId="a" fill="#8B7CFF" />
+                  <Bar dataKey="left" name="Marks Left to Capture" stackId="a" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.1)" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+
+        {/* Right: Weakness Intelligence Center (span 1) */}
+        <div className="glass-card p-5 md:p-8 rounded-2xl flex flex-col justify-between">
+          <div>
+            <div className="flex justify-between items-start">
+              <h3 className="text-md font-bold text-white flex items-center gap-2 m-0">
+                <ShieldAlert className="h-5 w-5 text-rose-400" />
+                Weakness Focus Areas
+              </h3>
+              <span className="text-[8px] font-black text-rose-400 bg-rose-500/10 px-1.5 py-0.5 rounded border border-rose-500/20 uppercase tracking-wider">
+                Action Required
+              </span>
+            </div>
+            <p className="text-[#7D8590] text-[10px] mt-1 mb-4 leading-normal">
+              AI recommendations flagging modules with clarity errors, accuracy lapses, or stale revisions.
+            </p>
+            
+            <div className="space-y-3">
+              {focusAreas.length > 0 ? (
+                focusAreas.map((fa, idx) => (
+                  <div key={idx} className="p-3 rounded-xl bg-rose-500/[0.02] border border-rose-500/10 space-y-1 text-[10px]">
+                    <div className="flex justify-between items-center">
+                      <span className="font-extrabold text-white block text-[11px] truncate max-w-[130px]">{fa.topicName}</span>
+                      <span className={`px-1.5 py-0.5 rounded text-[8px] font-black border uppercase tracking-wider ${
+                        fa.priority === 'Critical' ? 'bg-red-500/10 text-red-400 border-red-500/20 animate-pulse' : 'bg-orange-500/10 text-orange-400 border-orange-500/20'
+                      }`}>
+                        {fa.priority}
+                      </span>
+                    </div>
+                    <p className="text-[#B4BAC5] leading-normal mt-1.5">
+                      {fa.rec}
+                    </p>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-10 text-[#7D8590] border border-dashed border-white/5 rounded-xl bg-white/[0.01]">
+                  ✓ System check passed. No critical focus areas flagged!
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+        
       </div>
 
       {/* 4. Multi-Row Advanced Analytics Grid */}
