@@ -105,7 +105,9 @@ export default function DashboardTab({
   const subjectWeightageData = subjects.map(s => {
     const subProgress = progress.filter(p => p.subject_id === s.id);
     const completedCount = subProgress.filter(p => p.status === 'Completed' || p.status === 'Mastered').length;
-    const totalCount = s.topics.length || 1;
+    const totalCount = s.id === 'ga'
+      ? s.topics.reduce((sum, t) => sum + t.subtopics.length, 0)
+      : (s.topics.length || 1);
     const completionPercent = Math.round((completedCount / totalCount) * 100);
     
     const studied = subProgress.filter(p => p.status !== 'Not Started');
@@ -190,7 +192,9 @@ export default function DashboardTab({
   const subjectRadarData = subjects.map(s => {
     const subjectProgress = progress.filter(p => p.subject_id === s.id);
     const completedCount = subjectProgress.filter(p => p.status === 'Completed' || p.status === 'Mastered').length;
-    const totalCount = s.topics.length || 1;
+    const totalCount = s.id === 'ga'
+      ? s.topics.reduce((sum, t) => sum + t.subtopics.length, 0)
+      : (s.topics.length || 1);
     const completionPercent = Math.round((completedCount / totalCount) * 100);
     
     const studied = subjectProgress.filter(p => p.status !== 'Not Started');

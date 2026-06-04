@@ -113,9 +113,16 @@ export default function RevisionsTab({ revisions, onRevisionUpdated }: Revisions
                 className="w-full p-3 rounded-xl glass-input text-xs disabled:opacity-50"
               >
                 <option value="" className="bg-[#111315] text-white">-- Choose Topic --</option>
-                {selSubId && syllabus.find(s => s.id === selSubId)?.topics.map(t => (
-                  <option key={t.name} value={t.name} className="bg-[#111315] text-white">{t.name}</option>
-                ))}
+                {selSubId && (() => {
+                  const currentSub = syllabus.find(s => s.id === selSubId);
+                  if (!currentSub) return null;
+                  const list = selSubId === 'ga'
+                    ? currentSub.topics.flatMap(sec => sec.subtopics.map(st => ({ name: st })))
+                    : currentSub.topics;
+                  return list.map(t => (
+                    <option key={t.name} value={t.name} className="bg-[#111315] text-white">{t.name}</option>
+                  ));
+                })()}
               </select>
             </div>
 

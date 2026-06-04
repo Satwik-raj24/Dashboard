@@ -189,150 +189,257 @@ const createInitialProgress = (email: string): TopicProgress[] => {
   const initial: TopicProgress[] = [];
   const isDemo = email === 'aspirant@gate2027.in';
   
-  // To make the app look stunning out-of-the-box, we pre-populate some status progress
-  // representing a student who has completed ~38% of the syllabus ONLY for guest.
-  
   syllabus.forEach(subject => {
-    subject.topics.forEach((topic, idx) => {
-      // Seed some subjects as more complete than others
-      let status: TopicProgress['status'] = 'Not Started';
-      let completion = 0;
-      let clarity = 1;
-      let confidence = 1;
-      let studyHours = 0;
-      let solvedPyqs = 0;
-      let totalPyqs = 15 + Math.floor(Math.random() * 25);
-      let correctPyqs = 0;
-      let wrongPyqs = 0;
-      let difficulty = 3;
-      let revisionCount = 0;
-      let lastStudied: string | null = null;
-      let revisionDueDate: string | null = null;
+    if (subject.id === 'ga') {
+      subject.topics.forEach((section) => {
+        section.subtopics.forEach((subtopicName) => {
+          let status: TopicProgress['status'] = 'Not Started';
+          let completion = 0;
+          let clarity = 1;
+          let confidence = 1;
+          let studyHours = 0;
+          let solvedPyqs = 0;
+          let totalPyqs = 15 + Math.floor(Math.random() * 25);
+          let correctPyqs = 0;
+          let wrongPyqs = 0;
+          let difficulty = 3;
+          let revisionCount = 0;
+          let lastStudied: string | null = null;
+          let revisionDueDate: string | null = null;
 
-      // Seed Logic (Demo guest account only): 
-      if (isDemo) {
-        difficulty = 2 + Math.floor(Math.random() * 3);
-        // Complete first 5 topics in Discrete Maths
-        if (subject.id === 'dm' && idx < 5) {
-          status = 'Mastered';
-          completion = 100;
-          clarity = 9;
-          confidence = 9;
-          studyHours = 8 + idx * 2;
-          solvedPyqs = totalPyqs;
-          correctPyqs = Math.floor(totalPyqs * 0.85);
-          wrongPyqs = totalPyqs - correctPyqs;
-          revisionCount = 4;
-          lastStudied = '2026-05-28';
-        } 
-        // Completed some in Digital Logic
-        else if (subject.id === 'dl' && idx < 3) {
-          status = 'Completed';
-          completion = 100;
-          clarity = 7;
-          confidence = 7;
-          studyHours = 6 + idx;
-          solvedPyqs = Math.floor(totalPyqs * 0.8);
-          correctPyqs = Math.floor(solvedPyqs * 0.8);
-          wrongPyqs = solvedPyqs - correctPyqs;
-          revisionCount = 2;
-          lastStudied = '2026-05-30';
-        }
-        // In progress in Operating Systems
-        else if (subject.id === 'os' && idx < 4) {
-          if (idx === 0) {
-            status = 'Completed';
-            completion = 100;
-            clarity = 8;
-            confidence = 8;
-            studyHours = 5;
-            solvedPyqs = totalPyqs;
-            correctPyqs = Math.floor(totalPyqs * 0.8);
-            wrongPyqs = totalPyqs - correctPyqs;
-            lastStudied = '2026-06-01';
-            revisionCount = 1;
-          } else if (idx === 1) {
-            status = 'In Progress';
-            completion = 60;
-            clarity = 5;
-            confidence = 4;
-            studyHours = 3.5;
-            solvedPyqs = Math.floor(totalPyqs * 0.4);
-            correctPyqs = Math.floor(solvedPyqs * 0.7);
-            wrongPyqs = solvedPyqs - correctPyqs;
-            lastStudied = '2026-06-02';
-          } else if (idx === 2) {
-            status = 'Needs Revision';
-            completion = 100;
-            clarity = 6;
-            confidence = 5;
-            studyHours = 7;
-            solvedPyqs = Math.floor(totalPyqs * 0.9);
-            correctPyqs = Math.floor(solvedPyqs * 0.6);
-            wrongPyqs = solvedPyqs - correctPyqs;
-            lastStudied = '2026-05-20';
-            revisionDueDate = '2026-06-03'; // Due today
+          if (isDemo) {
+            difficulty = 2 + Math.floor(Math.random() * 3);
+            
+            // Seed Verbal Aptitude
+            if (section.name === 'Verbal Aptitude') {
+              if (subtopicName === 'Tenses') {
+                status = 'Mastered';
+                completion = 100;
+                clarity = 9;
+                confidence = 9;
+                studyHours = 4;
+                solvedPyqs = 12;
+                correctPyqs = 11;
+                wrongPyqs = 1;
+                revisionCount = 2;
+                lastStudied = '2026-05-25';
+              } else if (subtopicName === 'Articles') {
+                status = 'Completed';
+                completion = 100;
+                clarity = 8;
+                confidence = 8;
+                studyHours = 2;
+                solvedPyqs = 8;
+                correctPyqs = 7;
+                wrongPyqs = 1;
+                revisionCount = 1;
+                lastStudied = '2026-05-28';
+              } else if (subtopicName === 'Adjectives') {
+                status = 'In Progress';
+                completion = 50;
+                clarity = 6;
+                confidence = 5;
+                studyHours = 1.5;
+                solvedPyqs = 4;
+                correctPyqs = 3;
+                wrongPyqs = 1;
+                lastStudied = '2026-06-01';
+              }
+            }
+            // Seed Quantitative Aptitude
+            else if (section.name === 'Quantitative Aptitude') {
+              if (subtopicName === 'Ratios') {
+                status = 'Mastered';
+                completion = 100;
+                clarity = 9;
+                confidence = 9;
+                studyHours = 5;
+                solvedPyqs = 15;
+                correctPyqs = 14;
+                wrongPyqs = 1;
+                revisionCount = 3;
+                lastStudied = '2026-05-20';
+              } else if (subtopicName === 'Percentages') {
+                status = 'Completed';
+                completion = 100;
+                clarity = 8;
+                confidence = 7;
+                studyHours = 4;
+                solvedPyqs = 12;
+                correctPyqs = 10;
+                wrongPyqs = 2;
+                revisionCount = 1;
+                lastStudied = '2026-05-29';
+              }
+            }
+            // Seed Analytical Aptitude
+            else if (section.name === 'Analytical Aptitude') {
+              if (subtopicName === 'Deduction') {
+                status = 'In Progress';
+                completion = 30;
+                clarity = 5;
+                confidence = 5;
+                studyHours = 2;
+                solvedPyqs = 5;
+                correctPyqs = 3;
+                wrongPyqs = 2;
+                lastStudied = '2026-06-02';
+              }
+            }
+            // Seed Spatial Aptitude
+            else if (section.name === 'Spatial Aptitude') {
+              if (subtopicName === 'Translation') {
+                status = 'Completed';
+                completion = 100;
+                clarity = 8;
+                confidence = 8;
+                studyHours = 3;
+                solvedPyqs = 10;
+                correctPyqs = 9;
+                wrongPyqs = 1;
+                revisionCount = 1;
+                lastStudied = '2026-05-30';
+              }
+            }
           }
-        }
-        // Algorithms
-        else if (subject.id === 'algo' && idx < 3) {
-          status = idx === 0 ? 'Mastered' : 'In Progress';
-          completion = idx === 0 ? 100 : 40;
-          clarity = idx === 0 ? 10 : 5;
-          confidence = idx === 0 ? 9 : 4;
-          studyHours = idx === 0 ? 12 : 4;
-          solvedPyqs = idx === 0 ? totalPyqs : 5;
-          correctPyqs = idx === 0 ? Math.floor(totalPyqs * 0.9) : 3;
-          lastStudied = idx === 0 ? '2026-05-25' : '2026-06-02';
-        }
-        // General Aptitude (GA) Seeding
-        else if (subject.id === 'ga') {
-          if (idx === 0) { // Verbal Aptitude
-            status = 'Completed';
+
+          initial.push({
+            subject_id: subject.id,
+            topic_name: subtopicName,
+            status,
+            completion_percentage: completion,
+            start_date: completion > 0 ? '2026-05-01' : null,
+            last_studied_date: lastStudied,
+            concept_clarity: clarity,
+            confidence_score: confidence,
+            difficulty_rating: difficulty,
+            study_hours: studyHours,
+            pyqs_solved: solvedPyqs,
+            pyqs_total: totalPyqs,
+            pyqs_correct: correctPyqs,
+            pyqs_wrong: wrongPyqs,
+            pyqs_avg_time_seconds: studyHours > 0 ? 120 + Math.floor(Math.random() * 180) : 0,
+            revision_count: revisionCount,
+            revision_due_date: revisionDueDate
+          });
+        });
+      });
+    } else {
+      subject.topics.forEach((topic, idx) => {
+        // Seed some subjects as more complete than others
+        let status: TopicProgress['status'] = 'Not Started';
+        let completion = 0;
+        let clarity = 1;
+        let confidence = 1;
+        let studyHours = 0;
+        let solvedPyqs = 0;
+        let totalPyqs = 15 + Math.floor(Math.random() * 25);
+        let correctPyqs = 0;
+        let wrongPyqs = 0;
+        let difficulty = 3;
+        let revisionCount = 0;
+        let lastStudied: string | null = null;
+        let revisionDueDate: string | null = null;
+
+        // Seed Logic (Demo guest account only): 
+        if (isDemo) {
+          difficulty = 2 + Math.floor(Math.random() * 3);
+          // Complete first 5 topics in Discrete Maths
+          if (subject.id === 'dm' && idx < 5) {
+            status = 'Mastered';
             completion = 100;
-            clarity = 8;
-            confidence = 8;
-            studyHours = 6;
+            clarity = 9;
+            confidence = 9;
+            studyHours = 8 + idx * 2;
             solvedPyqs = totalPyqs;
             correctPyqs = Math.floor(totalPyqs * 0.85);
             wrongPyqs = totalPyqs - correctPyqs;
-            revisionCount = 2;
-            lastStudied = '2026-05-25';
-          } else if (idx === 1) { // Quantitative Aptitude
-            status = 'In Progress';
-            completion = 50;
-            clarity = 6;
-            confidence = 5;
-            studyHours = 9;
-            solvedPyqs = Math.floor(totalPyqs * 0.5);
-            correctPyqs = Math.floor(solvedPyqs * 0.7);
+            revisionCount = 4;
+            lastStudied = '2026-05-28';
+          } 
+          // Completed some in Digital Logic
+          else if (subject.id === 'dl' && idx < 3) {
+            status = 'Completed';
+            completion = 100;
+            clarity = 7;
+            confidence = 7;
+            studyHours = 6 + idx;
+            solvedPyqs = Math.floor(totalPyqs * 0.8);
+            correctPyqs = Math.floor(solvedPyqs * 0.8);
             wrongPyqs = solvedPyqs - correctPyqs;
-            revisionCount = 1;
-            lastStudied = '2026-06-01';
+            revisionCount = 2;
+            lastStudied = '2026-05-30';
+          }
+          // In progress in Operating Systems
+          else if (subject.id === 'os' && idx < 4) {
+            if (idx === 0) {
+              status = 'Completed';
+              completion = 100;
+              clarity = 8;
+              confidence = 8;
+              studyHours = 5;
+              solvedPyqs = totalPyqs;
+              correctPyqs = Math.floor(totalPyqs * 0.8);
+              wrongPyqs = totalPyqs - correctPyqs;
+              lastStudied = '2026-06-01';
+              revisionCount = 1;
+            } else if (idx === 1) {
+              status = 'In Progress';
+              completion = 60;
+              clarity = 5;
+              confidence = 4;
+              studyHours = 3.5;
+              solvedPyqs = Math.floor(totalPyqs * 0.4);
+              correctPyqs = Math.floor(solvedPyqs * 0.7);
+              wrongPyqs = solvedPyqs - correctPyqs;
+              lastStudied = '2026-06-02';
+            } else if (idx === 2) {
+              status = 'Needs Revision';
+              completion = 100;
+              clarity = 6;
+              confidence = 5;
+              studyHours = 7;
+              solvedPyqs = Math.floor(totalPyqs * 0.9);
+              correctPyqs = Math.floor(solvedPyqs * 0.6);
+              wrongPyqs = solvedPyqs - correctPyqs;
+              lastStudied = '2026-05-20';
+              revisionDueDate = '2026-06-03'; // Due today
+            }
+          }
+          // Algorithms
+          else if (subject.id === 'algo' && idx < 3) {
+            status = idx === 0 ? 'Mastered' : 'In Progress';
+            completion = idx === 0 ? 100 : 40;
+            clarity = idx === 0 ? 10 : 5;
+            confidence = idx === 0 ? 9 : 4;
+            studyHours = idx === 0 ? 12 : 4;
+            solvedPyqs = idx === 0 ? totalPyqs : 5;
+            correctPyqs = idx === 0 ? Math.floor(totalPyqs * 0.9) : 3;
+            lastStudied = idx === 0 ? '2026-05-25' : '2026-06-02';
           }
         }
-      }
 
-      initial.push({
-        subject_id: subject.id,
-        topic_name: topic.name,
-        status,
-        completion_percentage: completion,
-        start_date: completion > 0 ? '2026-05-01' : null,
-        last_studied_date: lastStudied,
-        concept_clarity: clarity,
-        confidence_score: confidence,
-        difficulty_rating: difficulty,
-        study_hours: studyHours,
-        pyqs_solved: solvedPyqs,
-        pyqs_total: totalPyqs,
-        pyqs_correct: correctPyqs,
-        pyqs_wrong: wrongPyqs,
-        pyqs_avg_time_seconds: studyHours > 0 ? 120 + Math.floor(Math.random() * 180) : 0,
-        revision_count: revisionCount,
-        revision_due_date: revisionDueDate
+        initial.push({
+          subject_id: subject.id,
+          topic_name: topic.name,
+          status,
+          completion_percentage: completion,
+          start_date: completion > 0 ? '2026-05-01' : null,
+          last_studied_date: lastStudied,
+          concept_clarity: clarity,
+          confidence_score: confidence,
+          difficulty_rating: difficulty,
+          study_hours: studyHours,
+          pyqs_solved: solvedPyqs,
+          pyqs_total: totalPyqs,
+          pyqs_correct: correctPyqs,
+          pyqs_wrong: wrongPyqs,
+          pyqs_avg_time_seconds: studyHours > 0 ? 120 + Math.floor(Math.random() * 180) : 0,
+          revision_count: revisionCount,
+          revision_due_date: revisionDueDate
+        });
       });
-    });
+    }
   });
 
   return initial;
@@ -529,30 +636,59 @@ export const db = {
             const missingTopics: TopicProgress[] = [];
             
             syllabus.forEach(subject => {
-              subject.topics.forEach(topic => {
-                const key = `${subject.id}:${topic.name}`;
-                if (!existingKeys.has(key)) {
-                  missingTopics.push({
-                    subject_id: subject.id,
-                    topic_name: topic.name,
-                    status: 'Not Started',
-                    completion_percentage: 0,
-                    start_date: null,
-                    last_studied_date: null,
-                    concept_clarity: 1,
-                    confidence_score: 1,
-                    difficulty_rating: 3,
-                    study_hours: 0,
-                    pyqs_solved: 0,
-                    pyqs_total: 25,
-                    pyqs_correct: 0,
-                    pyqs_wrong: 0,
-                    pyqs_avg_time_seconds: 0,
-                    revision_count: 0,
-                    revision_due_date: null
+              if (subject.id === 'ga') {
+                subject.topics.forEach(section => {
+                  section.subtopics.forEach(subtopicName => {
+                    const key = `${subject.id}:${subtopicName}`;
+                    if (!existingKeys.has(key)) {
+                      missingTopics.push({
+                        subject_id: subject.id,
+                        topic_name: subtopicName,
+                        status: 'Not Started',
+                        completion_percentage: 0,
+                        start_date: null,
+                        last_studied_date: null,
+                        concept_clarity: 1,
+                        confidence_score: 1,
+                        difficulty_rating: 3,
+                        study_hours: 0,
+                        pyqs_solved: 0,
+                        pyqs_total: 25,
+                        pyqs_correct: 0,
+                        pyqs_wrong: 0,
+                        pyqs_avg_time_seconds: 0,
+                        revision_count: 0,
+                        revision_due_date: null
+                      });
+                    }
                   });
-                }
-              });
+                });
+              } else {
+                subject.topics.forEach(topic => {
+                  const key = `${subject.id}:${topic.name}`;
+                  if (!existingKeys.has(key)) {
+                    missingTopics.push({
+                      subject_id: subject.id,
+                      topic_name: topic.name,
+                      status: 'Not Started',
+                      completion_percentage: 0,
+                      start_date: null,
+                      last_studied_date: null,
+                      concept_clarity: 1,
+                      confidence_score: 1,
+                      difficulty_rating: 3,
+                      study_hours: 0,
+                      pyqs_solved: 0,
+                      pyqs_total: 25,
+                      pyqs_correct: 0,
+                      pyqs_wrong: 0,
+                      pyqs_avg_time_seconds: 0,
+                      revision_count: 0,
+                      revision_due_date: null
+                    });
+                  }
+                });
+              }
             });
 
             if (missingTopics.length > 0) {
@@ -612,31 +748,61 @@ export const db = {
     let hasChanges = false;
     
     syllabus.forEach(subject => {
-      subject.topics.forEach(topic => {
-        const key = `${subject.id}:${topic.name}`;
-        if (!existingKeys.has(key)) {
-          localProgress.push({
-            subject_id: subject.id,
-            topic_name: topic.name,
-            status: 'Not Started',
-            completion_percentage: 0,
-            start_date: null,
-            last_studied_date: null,
-            concept_clarity: 1,
-            confidence_score: 1,
-            difficulty_rating: 3,
-            study_hours: 0,
-            pyqs_solved: 0,
-            pyqs_total: 25,
-            pyqs_correct: 0,
-            pyqs_wrong: 0,
-            pyqs_avg_time_seconds: 0,
-            revision_count: 0,
-            revision_due_date: null
+      if (subject.id === 'ga') {
+        subject.topics.forEach(section => {
+          section.subtopics.forEach(subtopicName => {
+            const key = `${subject.id}:${subtopicName}`;
+            if (!existingKeys.has(key)) {
+              localProgress.push({
+                subject_id: subject.id,
+                topic_name: subtopicName,
+                status: 'Not Started',
+                completion_percentage: 0,
+                start_date: null,
+                last_studied_date: null,
+                concept_clarity: 1,
+                confidence_score: 1,
+                difficulty_rating: 3,
+                study_hours: 0,
+                pyqs_solved: 0,
+                pyqs_total: 25,
+                pyqs_correct: 0,
+                pyqs_wrong: 0,
+                pyqs_avg_time_seconds: 0,
+                revision_count: 0,
+                revision_due_date: null
+              });
+              hasChanges = true;
+            }
           });
-          hasChanges = true;
-        }
-      });
+        });
+      } else {
+        subject.topics.forEach(topic => {
+          const key = `${subject.id}:${topic.name}`;
+          if (!existingKeys.has(key)) {
+            localProgress.push({
+              subject_id: subject.id,
+              topic_name: topic.name,
+              status: 'Not Started',
+              completion_percentage: 0,
+              start_date: null,
+              last_studied_date: null,
+              concept_clarity: 1,
+              confidence_score: 1,
+              difficulty_rating: 3,
+              study_hours: 0,
+              pyqs_solved: 0,
+              pyqs_total: 25,
+              pyqs_correct: 0,
+              pyqs_wrong: 0,
+              pyqs_avg_time_seconds: 0,
+              revision_count: 0,
+              revision_due_date: null
+            });
+            hasChanges = true;
+          }
+        });
+      }
     });
 
     if (hasChanges) {

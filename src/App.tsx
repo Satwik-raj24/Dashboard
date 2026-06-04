@@ -13,9 +13,9 @@ import MockTestTab from './components/MockTestTab';
 import RevisionsTab from './components/RevisionsTab';
 import GoalsNotesTab from './components/GoalsNotesTab';
 import RankPredictorTab from './components/RankPredictorTab';
-import GAAnalyticsTab from './components/GAAnalyticsTab';
+import SubjectAnalyticsTab from './components/SubjectAnalyticsTab';
 
-type ActiveTab = 'dashboard' | 'syllabus' | 'timer' | 'mocks' | 'revisions' | 'goals' | 'rankPredictor' | 'gaAnalytics';
+type ActiveTab = 'dashboard' | 'syllabus' | 'timer' | 'mocks' | 'revisions' | 'goals' | 'rankPredictor' | 'subjectAnalytics';
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -93,7 +93,7 @@ export default function App() {
         }
         else if (key === 'r') targetTab = 'revisions';
         else if (key === 'm') targetTab = 'mocks';
-        else if (key === 'a') targetTab = 'gaAnalytics';
+        else if (key === 'a') targetTab = 'subjectAnalytics';
         else if (key === 'p') targetTab = 'rankPredictor';
         else if (key === 'g') targetTab = 'goals';
 
@@ -304,15 +304,15 @@ export default function App() {
             </button>
 
             <button
-              onClick={() => setActiveTab('gaAnalytics')}
+              onClick={() => setActiveTab('subjectAnalytics')}
               className={`w-full py-2.5 pl-3 pr-2 font-bold flex items-center gap-3 transition-colors cursor-pointer text-left border-l-2 ${
-                activeTab === 'gaAnalytics'
+                activeTab === 'subjectAnalytics'
                   ? 'border-l-[#6D5DF6] text-white'
                   : 'border-l-transparent text-[#7D8590] hover:text-white'
               }`}
             >
               <Sparkles className="h-4.5 w-4.5" />
-              GA Analytics
+              Subject Analytics
             </button>
 
             <button
@@ -443,13 +443,13 @@ export default function App() {
             AIR Predictor
           </button>
           <button
-            onClick={() => { setActiveTab('gaAnalytics'); setMobileMenuOpen(false); }}
+            onClick={() => { setActiveTab('subjectAnalytics'); setMobileMenuOpen(false); }}
             className={`w-full py-2.5 px-3 rounded-lg font-bold flex items-center gap-3 border text-left ${
-              activeTab === 'gaAnalytics' ? 'bg-[#6D5DF6]/10 border-[#6D5DF6]/20 text-white' : 'text-[#7D8590] border-transparent'
+              activeTab === 'subjectAnalytics' ? 'bg-[#6D5DF6]/10 border-[#6D5DF6]/20 text-white' : 'text-[#7D8590] border-transparent'
             }`}
           >
             <Sparkles className="h-4.5 w-4.5" />
-            GA Analytics
+            Subject Analytics
           </button>
           <button
             onClick={() => { setActiveTab('goals'); setMobileMenuOpen(false); }}
@@ -562,8 +562,8 @@ export default function App() {
             />
           )}
 
-          {activeTab === 'gaAnalytics' && (
-            <GAAnalyticsTab 
+          {activeTab === 'subjectAnalytics' && (
+            <SubjectAnalyticsTab 
               profile={profile}
               progress={progress}
               sessions={sessions}
@@ -609,7 +609,7 @@ export default function App() {
                       { name: 'Study Timer', tab: 'timer' as const },
                       { name: 'Revision Spacing', tab: 'revisions' as const },
                       { name: 'Mock Center', tab: 'mocks' as const },
-                      { name: 'GA Analytics', tab: 'gaAnalytics' as const },
+                      { name: 'Subject Analytics', tab: 'subjectAnalytics' as const },
                       { name: 'AIR Predictor', tab: 'rankPredictor' as const },
                       { name: 'Goals & Notes', tab: 'goals' as const }
                     ].map((nav, idx) => (
@@ -638,16 +638,39 @@ export default function App() {
                   s => s.name.toLowerCase().includes(query) || s.code.toLowerCase().includes(query)
                 );
 
-                // Match topics
-                const matchedTopics: Array<{ subject: any; topic: any }> = [];
+                // Match topics / subtopics
+                const matchedTopics: Array<{ subject: any; name: string; parentName?: string; subtopicsCount?: number; isGA?: boolean }> = [];
                 syllabus.forEach(s => {
-                  s.topics.forEach(t => {
-                    if (t.name.toLowerCase().includes(query) || t.subtopics.some(st => st.toLowerCase().includes(query))) {
-                      if (matchedTopics.length < 6) {
-                        matchedTopics.push({ subject: s, topic: t });
+                  if (s.id === 'ga') {
+                    // For GA, we search and navigate to individual subtopics
+                    s.topics.forEach(sec => {
+                      sec.subtopics.forEach(subtopic => {
+                        if (subtopic.toLowerCase().includes(query)) {
+                          if (matchedTopics.length < 8) {
+                            matchedTopics.push({
+                              subject: s,
+                              name: subtopic,
+                              parentName: sec.name,
+                              isGA: true
+                            });
+                          }
+                        }
+                      });
+                    });
+                  } else {
+                    // For technical subjects, we search and navigate to topics
+                    s.topics.forEach(t => {
+                      if (t.name.toLowerCase().includes(query) || t.subtopics.some(st => st.toLowerCase().includes(query))) {
+                        if (matchedTopics.length < 8) {
+                          matchedTopics.push({
+                            subject: s,
+                            name: t.name,
+                            subtopicsCount: t.subtopics.length
+                          });
+                        }
                       }
-                    }
-                  });
+                    });
+                  }
                 });
 
                 if (matchedSubjects.length === 0 && matchedTopics.length === 0) {
@@ -688,15 +711,17 @@ export default function App() {
                               key={idx}
                               onClick={() => {
                                 setPaletteSubjectId(mt.subject.id);
-                                setPaletteTopicName(mt.topic.name);
+                                setPaletteTopicName(mt.name);
                                 setActiveTab('syllabus');
                                 setCommandPaletteOpen(false);
                               }}
                               className="p-3 rounded-xl bg-white/2 border border-white/5 hover:bg-white/[0.05] cursor-pointer flex justify-between items-center transition-all animate-fade-in"
                             >
                               <div>
-                                <span className="font-bold text-white text-xs block">{mt.topic.name}</span>
-                                <span className="text-[9px] text-secondary mt-0.5 block">{mt.subject.name} • {mt.topic.subtopics.length} subtopics</span>
+                                <span className="font-bold text-white text-xs block">{mt.name}</span>
+                                <span className="text-[9px] text-secondary mt-0.5 block">
+                                  {mt.isGA ? `${mt.subject.name} • ${mt.parentName}` : `${mt.subject.name} • ${mt.subtopicsCount} subtopics`}
+                                </span>
                               </div>
                               <span className="text-[9px] text-[#8B7CFF] bg-[#8B7CFF]/10 px-1.5 py-0.5 rounded uppercase font-bold">Inspect</span>
                             </div>

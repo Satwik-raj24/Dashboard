@@ -76,7 +76,11 @@ export default function GoalsNotesTab({
   };
 
   const currentSubject = subjects.find(s => s.id === selectedSubjectId);
-  const topicsList = currentSubject ? currentSubject.topics : [];
+  const topicsList = currentSubject
+    ? (selectedSubjectId === 'ga'
+        ? currentSubject.topics.flatMap(sec => sec.subtopics.map(st => ({ name: st })))
+        : currentSubject.topics)
+    : [];
 
   // Simple custom Markdown parser
   const renderMarkdown = (text: string) => {

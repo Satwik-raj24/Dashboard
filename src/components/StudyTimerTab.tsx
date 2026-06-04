@@ -166,7 +166,11 @@ export default function StudyTimerTab({
 
   // Get topics for selected subject
   const currentSubject = subjects.find(s => s.id === selectedSubjectId);
-  const topicsList = currentSubject ? currentSubject.topics : [];
+  const topicsList = currentSubject
+    ? (selectedSubjectId === 'ga'
+        ? currentSubject.topics.flatMap(sec => sec.subtopics.map(st => ({ name: st })))
+        : currentSubject.topics)
+    : [];
 
   const localTodayStr = getLocalDateString(new Date());
   const todaySessions = sessions.filter(s => {
