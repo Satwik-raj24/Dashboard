@@ -131,30 +131,7 @@ export default function SubjectAnalyticsTab({
     };
   });
 
-  // 4. Strongest, Weakest, and Revision Due lists (for the selected subject)
-  const getSortedItems = () => {
-    return subjectProgress
-      .map(p => {
-        const accuracy = p.pyqs_solved > 0 ? (p.pyqs_correct / p.pyqs_solved) * 100 : 0;
-        const score = (p.completion_percentage * 0.4) + (p.concept_clarity * 4) + (accuracy * 0.2);
-        return { 
-          topicName: p.topic_name, 
-          score, 
-          clarity: p.concept_clarity, 
-          accuracy, 
-          status: p.status, 
-          study_hours: p.study_hours,
-          revision_count: p.revision_count,
-          revision_due_date: p.revision_due_date
-        };
-      })
-      .sort((a, b) => b.score - a.score);
-  };
-
-  const sortedItems = getSortedItems();
-  const strongestItems = sortedItems.filter(t => t.status !== 'Not Started').slice(0, 3);
-  const weakestItems = [...sortedItems].reverse().filter(t => t.status !== 'Mastered').slice(0, 3);
-
+  // 4. Revision Due list (for the selected subject)
   const todayStr = getLocalDateString(new Date());
   const revisionDueItems = subjectProgress.filter(p => {
     const hasPendingRev = subjectRevisions.some(r => r.topic_name === p.topic_name && r.status === 'Pending' && r.due_date <= todayStr);
@@ -472,75 +449,26 @@ export default function SubjectAnalyticsTab({
         </div>
       </div>
 
-      {/* Strongest vs Weakest list */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Strongest */}
-        <div className="glass-card p-5 rounded-xl space-y-4">
-          <h4 className="text-sm font-extrabold text-emerald-400 flex items-center gap-1.5 m-0">
-            <CheckCircle2 className="h-4.5 w-4.5 text-emerald-400" />
-            Strongest Focus Areas
-          </h4>
-          <div className="space-y-3">
-            {strongestItems.length > 0 ? (
-              strongestItems.map((t, idx) => (
-                <div key={idx} className="flex justify-between items-center p-3 rounded-lg bg-white/2 border border-white/5">
-                  <div className="space-y-0.5">
-                    <span className="text-white font-extrabold block text-xs truncate max-w-[150px]">{t.topicName}</span>
-                    <span className="text-[10px] text-secondary">Clarity: <b>{t.clarity}/10</b> • Accuracy: <b>{Math.round(t.accuracy)}%</b></span>
-                  </div>
-                  <span className="px-2 py-1 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[9px] font-black rounded uppercase">Solid</span>
+      {/* Revision Due list */}
+      <div className="glass-card p-5 rounded-xl space-y-4 max-w-md mx-auto">
+        <h4 className="text-sm font-extrabold text-amber-400 flex items-center gap-1.5 m-0">
+          <Calendar className="h-4.5 w-4.5 text-amber-400" />
+          Revision Due Topics
+        </h4>
+        <div className="space-y-3">
+          {revisionDueItems.length > 0 ? (
+            revisionDueItems.map((t, idx) => (
+              <div key={idx} className="flex justify-between items-center p-3 rounded-lg bg-white/2 border border-white/5">
+                <div className="space-y-0.5">
+                  <span className="text-white font-extrabold block text-xs truncate max-w-[200px]">{t.topic_name}</span>
+                  <span className="text-[10px] text-secondary">Revision count: <b>{t.revision_count} completed</b></span>
                 </div>
-              ))
-            ) : (
-              <p className="text-[#7D8590] italic">No modules studied yet.</p>
-            )}
-          </div>
-        </div>
-
-        {/* Weakest */}
-        <div className="glass-card p-5 rounded-xl space-y-4">
-          <h4 className="text-sm font-extrabold text-rose-400 flex items-center gap-1.5 m-0">
-            <ShieldAlert className="h-4.5 w-4.5 text-rose-400" />
-            Weak Areas (Requires Practice)
-          </h4>
-          <div className="space-y-3">
-            {weakestItems.length > 0 ? (
-              weakestItems.map((t, idx) => (
-                <div key={idx} className="flex justify-between items-center p-3 rounded-lg bg-white/2 border border-white/5">
-                  <div className="space-y-0.5">
-                    <span className="text-white font-extrabold block text-xs truncate max-w-[150px]">{t.topicName}</span>
-                    <span className="text-[10px] text-secondary">Clarity: <b>{t.clarity}/10</b> • Accuracy: <b>{Math.round(t.accuracy)}%</b></span>
-                  </div>
-                  <span className="px-2 py-1 bg-rose-500/10 border border-rose-500/20 text-rose-400 text-[9px] font-black rounded uppercase">Requires Drill</span>
-                </div>
-              ))
-            ) : (
-              <p className="text-[#7D8590] italic">All topics are performing well.</p>
-            )}
-          </div>
-        </div>
-
-        {/* Revision Due */}
-        <div className="glass-card p-5 rounded-xl space-y-4">
-          <h4 className="text-sm font-extrabold text-amber-400 flex items-center gap-1.5 m-0">
-            <Calendar className="h-4.5 w-4.5 text-amber-400" />
-            Revision Due
-          </h4>
-          <div className="space-y-3">
-            {revisionDueItems.length > 0 ? (
-              revisionDueItems.map((t, idx) => (
-                <div key={idx} className="flex justify-between items-center p-3 rounded-lg bg-white/2 border border-white/5">
-                  <div className="space-y-0.5">
-                    <span className="text-white font-extrabold block text-xs truncate max-w-[150px]">{t.topic_name}</span>
-                    <span className="text-[10px] text-secondary">Revision count: <b>{t.revision_count} completed</b></span>
-                  </div>
-                  <span className="px-2 py-1 bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[9px] font-black rounded uppercase">Due</span>
-                </div>
-              ))
-            ) : (
-              <p className="text-[#7D8590] italic">All reviews are up to date for this subject.</p>
-            )}
-          </div>
+                <span className="px-2 py-1 bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[9px] font-black rounded uppercase">Due</span>
+              </div>
+            ))
+          ) : (
+            <p className="text-[#7D8590] italic">All reviews are up to date for this subject.</p>
+          )}
         </div>
       </div>
     </div>
