@@ -55,51 +55,6 @@ export default function DashboardTab({
   // Remaining Revision Tasks: Pending or Missed revisions
   const remainingRevisions = revisions.filter(r => r.status === 'Pending' || r.status === 'Missed').length;
 
-  // Weakness Intelligence Center Focus Areas
-  const focusAreas = (() => {
-    const list: Array<{ topicName: string; reason: string; rec: string; priority: 'Critical' | 'High'; score: number }> = [];
-    
-    progress.forEach(p => {
-      const subj = subjects.find(s => s.id === p.subject_id);
-      if (!subj) return;
-
-      const completion = p.completion_percentage || 0;
-      const clarity = p.concept_clarity || 1;
-      const solved = p.pyqs_solved || 0;
-      const correct = p.pyqs_correct || 0;
-      const accuracy = solved > 0 ? (correct / solved) * 100 : 0;
-
-      const priorityInfo = calculateTopicPriority(p, subj.weightage, revisions);
-
-      if (clarity < 5 && completion > 0) {
-        list.push({
-          topicName: p.topic_name,
-          reason: `Concept Clarity is low (${clarity}/10).`,
-          rec: `${p.topic_name} clarity is currently ${clarity}/10. Recommended study time: ${Math.max(2, Math.round(subj.weightage * (1 - completion/100) * 2))} hours this week to resolve weak concepts.`,
-          priority: priorityInfo.priority === 'Critical' ? 'Critical' : 'High',
-          score: priorityInfo.score
-        });
-      } else if (accuracy < 60 && solved > 0) {
-        list.push({
-          topicName: p.topic_name,
-          reason: `PYQ Accuracy is sub-par (${Math.round(accuracy)}%).`,
-          rec: `${p.topic_name} has ${completion}% completion and ${Math.round(accuracy)}% accuracy. Recommended study time: ${Math.max(2, Math.round(subj.weightage * (1 - completion/100) * 3))} hours on problem drilling.`,
-          priority: priorityInfo.priority === 'Critical' ? 'Critical' : 'High',
-          score: priorityInfo.score
-        });
-      } else if (subj.weightage >= 8 && completion < 40) {
-        list.push({
-          topicName: p.topic_name,
-          reason: `High weightage subject, completion is low (${completion}%).`,
-          rec: `${subj.name} has high weightage (${subj.weightage} Marks). ${p.topic_name} is only ${completion}% complete. Allocate ${Math.max(3, Math.round(subj.weightage * 0.5))} hours this week.`,
-          priority: priorityInfo.priority === 'Critical' ? 'Critical' : 'High',
-          score: priorityInfo.score
-        });
-      }
-    });
-
-    return list.sort((a, b) => b.score - a.score).slice(0, 3);
-  })();
 
   // Subject Weightage Data
   const subjectWeightageData = subjects.map(s => {
@@ -742,11 +697,11 @@ export default function DashboardTab({
         </div>
       </div>
 
-      {/* 3.1 Subject Marks Analytics & Weakness Intelligence Center */}
+      {/* 3.1 Subject Marks Analytics */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        {/* Left: Subject Weightage Analytics (span 2) */}
-        <div className="glass-card p-5 md:p-8 rounded-2xl lg:col-span-2 space-y-6 flex flex-col justify-between">
+        {/* Left: Subject Weightage Analytics (span 3 - full row) */}
+        <div className="glass-card p-5 md:p-8 rounded-2xl lg:col-span-3 space-y-6 flex flex-col justify-between">
           <div>
             <h3 className="text-md font-bold text-white flex items-center gap-2 m-0">
               <Award className="h-5 w-5 text-fuchsia-400" />
@@ -759,7 +714,7 @@ export default function DashboardTab({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
             {/* Scrollable list */}
-            <div className="space-y-2.5 max-h-56 overflow-y-auto pr-1">
+            <div className="space-y-2.5 max-h-56 overflow-y-auto pr-1 select-none">
               {subjectWeightageData.map((sub, idx) => (
                 <div key={idx} className="p-2.5 rounded-xl bg-white/[0.01] border border-white/[0.04] text-[10px] flex justify-between items-center">
                   <div>
@@ -786,48 +741,6 @@ export default function DashboardTab({
                   <Bar dataKey="left" name="Marks Left to Capture" stackId="a" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.1)" />
                 </BarChart>
               </ResponsiveContainer>
-            </div>
-          </div>
-        </div>
-
-        {/* Right: Weakness Intelligence Center (span 1) */}
-        <div className="glass-card p-5 md:p-8 rounded-2xl flex flex-col justify-between">
-          <div>
-            <div className="flex justify-between items-start">
-              <h3 className="text-md font-bold text-white flex items-center gap-2 m-0">
-                <ShieldAlert className="h-5 w-5 text-rose-400" />
-                Weakness Focus Areas
-              </h3>
-              <span className="text-[8px] font-black text-rose-400 bg-rose-500/10 px-1.5 py-0.5 rounded border border-rose-500/20 uppercase tracking-wider">
-                Action Required
-              </span>
-            </div>
-            <p className="text-[#7D8590] text-[10px] mt-1 mb-4 leading-normal">
-              AI recommendations flagging modules with clarity errors, accuracy lapses, or stale revisions.
-            </p>
-            
-            <div className="space-y-3">
-              {focusAreas.length > 0 ? (
-                focusAreas.map((fa, idx) => (
-                  <div key={idx} className="p-3 rounded-xl bg-rose-500/[0.02] border border-rose-500/10 space-y-1 text-[10px]">
-                    <div className="flex justify-between items-center">
-                      <span className="font-extrabold text-white block text-[11px] truncate max-w-[130px]">{fa.topicName}</span>
-                      <span className={`px-1.5 py-0.5 rounded text-[8px] font-black border uppercase tracking-wider ${
-                        fa.priority === 'Critical' ? 'bg-red-500/10 text-red-400 border-red-500/20 animate-pulse' : 'bg-orange-500/10 text-orange-400 border-orange-500/20'
-                      }`}>
-                        {fa.priority}
-                      </span>
-                    </div>
-                    <p className="text-[#B4BAC5] leading-normal mt-1.5">
-                      {fa.rec}
-                    </p>
-                  </div>
-                ))
-              ) : (
-                <div className="text-center py-10 text-[#7D8590] border border-dashed border-white/5 rounded-xl bg-white/[0.01]">
-                  ✓ System check passed. No critical focus areas flagged!
-                </div>
-              )}
             </div>
           </div>
         </div>
