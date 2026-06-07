@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   LayoutDashboard, BookOpen, Clock, BarChart4, Calendar, 
-  Target, Brain, LogOut, Menu, X, Flame, ShieldCheck, Trophy, Sparkles, Search, Command
+  Target, Brain, LogOut, Menu, X, Flame, ShieldCheck, Trophy, Sparkles, Search, Command, Bell
 } from 'lucide-react';
 import { db, Profile, TopicProgress, MockTest, RevisionTask, StudySession, isSupabaseConfigured, getLocalDateString } from './services/db';
 import { syllabus } from './services/syllabusData';
@@ -14,8 +15,10 @@ import RevisionsTab from './components/RevisionsTab';
 import GoalsNotesTab from './components/GoalsNotesTab';
 import RankPredictorTab from './components/RankPredictorTab';
 import SubjectAnalyticsTab from './components/SubjectAnalyticsTab';
+import NotificationsTab from './components/NotificationsTab';
+import { notificationEngine, GateNotification } from './services/notificationEngine';
 
-type ActiveTab = 'dashboard' | 'syllabus' | 'timer' | 'mocks' | 'revisions' | 'goals' | 'rankPredictor' | 'subjectAnalytics';
+type ActiveTab = 'dashboard' | 'syllabus' | 'timer' | 'mocks' | 'revisions' | 'goals' | 'rankPredictor' | 'subjectAnalytics' | 'notifications';
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -40,6 +43,10 @@ export default function App() {
   const [mocks, setMockTests] = useState<MockTest[]>([]);
   const [revisions, setRevisions] = useState<RevisionTask[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Notifications state
+  const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
+  const [activeToast, setActiveToast] = useState<GateNotification | null>(null);
 
   // Keyboard Shortcuts & Command Palette Global Hook
   useEffect(() => {
@@ -96,6 +103,7 @@ export default function App() {
         else if (key === 'a') targetTab = 'subjectAnalytics';
         else if (key === 'p') targetTab = 'rankPredictor';
         else if (key === 'g') targetTab = 'goals';
+        else if (key === 'n') targetTab = 'notifications';
 
         if (targetTab) {
           e.preventDefault();
@@ -130,6 +138,31 @@ export default function App() {
     loadAllData();
   }, [isAuthenticated]);
 
+  // Auto-request notification permissions during onboarding
+  useEffect(() => {
+    if (isAuthenticated) {
+      updateUnreadCount();
+      if ('Notification' in window && Notification.permission === 'default') {
+        setTimeout(() => {
+          Notification.requestPermission().then(permission => {
+            if (permission === 'granted') {
+              notificationEngine.triggerBrowserNotification(
+                '🔔 Mentor Alerts Connected',
+                'You will receive smart notifications as you prepare!'
+              );
+            }
+            updateUnreadCount();
+          });
+        }, 5000);
+      }
+    }
+  }, [isAuthenticated]);
+
+  const updateUnreadCount = () => {
+    const history = notificationEngine.getHistory();
+    setUnreadNotificationsCount(history.filter(n => !n.read).length);
+  };
+
   const loadAllData = async () => {
     setLoading(true);
     try {
@@ -144,6 +177,17 @@ export default function App() {
       setSessions(sess);
       setMockTests(mck);
       setRevisions(rev);
+
+      // Trigger Smart Notification Engine checks
+      if (prof) {
+        const newNotifs = notificationEngine.checkAndGenerate(prof, prog, sess, mck, rev);
+        const history = notificationEngine.getHistory();
+        setUnreadNotificationsCount(history.filter(n => !n.read).length);
+        if (newNotifs.length > 0) {
+          setActiveToast(newNotifs[0]);
+          setTimeout(() => setActiveToast(null), 5000);
+        }
+      }
     } catch (err) {
       console.error("Failed to load GATEOS metrics", err);
     } finally {
@@ -327,6 +371,25 @@ export default function App() {
               Goals & Notes
             </button>
 
+            <button
+              onClick={() => setActiveTab('notifications')}
+              className={`w-full py-2.5 pl-3 pr-2 font-bold flex items-center justify-between transition-colors cursor-pointer border-l-2 ${
+                activeTab === 'notifications'
+                  ? 'border-l-[#6D5DF6] text-white'
+                  : 'border-l-transparent text-[#7D8590] hover:text-white'
+              }`}
+            >
+              <span className="flex items-center gap-3">
+                <Bell className="h-4.5 w-4.5" />
+                Mentor Alerts
+              </span>
+              {unreadNotificationsCount > 0 && (
+                <span className="h-4.5 px-1.5 bg-[#6D5DF6] text-white rounded-full text-[9px] font-extrabold flex items-center justify-center">
+                  {unreadNotificationsCount}
+                </span>
+              )}
+            </button>
+
 
           </nav>
         </div>
@@ -460,6 +523,22 @@ export default function App() {
             <Target className="h-4.5 w-4.5" />
             Goals & Notes
           </button>
+          <button
+            onClick={() => { setActiveTab('notifications'); setMobileMenuOpen(false); }}
+            className={`w-full py-2.5 px-3 rounded-lg font-bold flex items-center gap-3 border text-left justify-between ${
+              activeTab === 'notifications' ? 'bg-[#6D5DF6]/10 border-[#6D5DF6]/20 text-white' : 'text-[#7D8590] border-transparent'
+            }`}
+          >
+            <span className="flex items-center gap-3">
+              <Bell className="h-4.5 w-4.5" />
+              Mentor Alerts
+            </span>
+            {unreadNotificationsCount > 0 && (
+              <span className="h-4.5 px-1.5 bg-[#6D5DF6] text-white rounded-full text-[9px] font-extrabold flex items-center justify-center">
+                {unreadNotificationsCount}
+              </span>
+            )}
+          </button>
 
 
           <div className="pt-6 mt-6 border-t border-white/5">
@@ -572,6 +651,12 @@ export default function App() {
             />
           )}
 
+          {activeTab === 'notifications' && (
+            <NotificationsTab 
+              onNotificationsUpdated={updateUnreadCount}
+            />
+          )}
+
         </div>
       </main>
 
@@ -611,7 +696,8 @@ export default function App() {
                       { name: 'Mock Center', tab: 'mocks' as const },
                       { name: 'Subject Analytics', tab: 'subjectAnalytics' as const },
                       { name: 'AIR Predictor', tab: 'rankPredictor' as const },
-                      { name: 'Goals & Notes', tab: 'goals' as const }
+                      { name: 'Goals & Notes', tab: 'goals' as const },
+                      { name: 'Mentor Alerts', tab: 'notifications' as const }
                     ].map((nav, idx) => (
                       <button
                         key={idx}
@@ -736,6 +822,32 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* Real-time Mentor Alert Popup Toast */}
+      <AnimatePresence>
+        {activeToast && (
+          <motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.9 }}
+            onClick={() => {
+              setActiveTab('notifications');
+              setActiveToast(null);
+            }}
+            className="fixed bottom-5 right-5 z-50 max-w-sm p-4 rounded-xl border border-[#6D5DF6]/30 bg-[#0E0F14]/95 backdrop-blur shadow-2xl flex gap-3 cursor-pointer hover:border-[#8B7CFF]/50 transition-all font-outfit"
+          >
+            <div className="h-8.5 w-8.5 bg-[#6D5DF6]/10 border border-[#6D5DF6]/20 rounded-lg flex items-center justify-center shrink-0">
+              <Bell className="h-4.5 w-4.5 text-[#8B7CFF]" />
+            </div>
+            <div className="space-y-1">
+              <span className="font-bold text-white text-xs block">{activeToast.title}</span>
+              <p className="text-[#B4BAC5] text-[10px] leading-normal m-0 line-clamp-2">
+                {activeToast.message}
+              </p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
     </div>
   );
